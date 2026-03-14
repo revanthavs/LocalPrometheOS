@@ -1,0 +1,36 @@
+lmstudio:
+  base_url: "http://localhost:1234/v1"
+  model: "qwen2.5"
+  temperature: 0.2
+  max_tokens: 1024
+  timeout: 60
+
+scheduler:
+  timezone: "UTC"
+  max_workers: 4
+
+storage:
+  db_path: "data/prometheos.db"
+  results_dir: "data/results"
+
+mcp:
+  servers: []
+  # Example MCP server definitions:
+  # - name: "local-tools"
+  #   transport: "stdio"
+  #   command: ["/path/to/mcp-server", "--stdio"]
+  #   env: {}
+  #   timeout: 30
+  # - name: "remote-tools"
+  #   transport: "http"
+  #   url: "http://localhost:4000/mcp"
+  #   timeout: 30
+
+logging:
+  level: "INFO"
+  file: "data/prometheos.log"
+
+memory:
+  chroma_enabled: false
+  persist_dir: "data/chroma"
+  collection: "prometheos"

@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+.DS_Store
+.idea/
+.vscode/
+
+# Local data
+/data/
+*.db
+*.log
+
+# Streamlit
+.streamlit/
