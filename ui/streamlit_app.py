@@ -3,11 +3,17 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import sys
+
 import streamlit as st
 
-from config.config import load_config
-from database.db import Database
-from tasks.task_definition import load_tasks
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from config.config import load_config  # noqa: E402
+from database.db import Database  # noqa: E402
+from tasks.task_definition import load_tasks  # noqa: E402
 
 
 st.set_page_config(page_title="LocalPrometheOS", layout="wide")

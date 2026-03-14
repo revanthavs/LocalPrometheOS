@@ -62,6 +62,7 @@ def run_task(task_name: str, config: Optional[str] = typer.Option(None, "--confi
         typer.echo(f"Task not found: {task_name}")
         raise typer.Exit(code=1)
     controller = _build_controller(config)
+    controller.db.init_db()
     controller.db.upsert_task(match)
     result = controller.run_task(match)
     typer.echo(json.dumps(result, indent=2))
