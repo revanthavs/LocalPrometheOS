@@ -54,7 +54,7 @@ class PlannerAgent:
                         "id": f"step-{len(steps)+1}",
                         "purpose": f"Run tool {tool_name}",
                         "tool": tool_name,
-                        "args": {"inputs": "$inputs"},
+                        "args": "$inputs",
                     }
                 )
         # If planner referenced tools that are not available, keep them but note it in purpose.

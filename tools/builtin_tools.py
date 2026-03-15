@@ -163,7 +163,7 @@ def _web_search(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
     max_results = int(args.get("max_results", 5))
     results: List[Dict[str, Any]] = []
     with DDGS() as ddgs:
-        for entry in ddgs.text(query, max_results=max_results):
+        for entry in ddgs.text(query, max_results=max_results, backend="html"):
             results.append(
                 {
                     "title": entry.get("title"),
