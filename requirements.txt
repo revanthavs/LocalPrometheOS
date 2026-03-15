@@ -7,3 +7,6 @@ typer>=0.12.3
 streamlit>=1.36.0
 pytest>=8.2.0
 responses>=0.25.0
+
+beautifulsoup4
+lxml

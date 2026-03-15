@@ -8,6 +8,7 @@ import json
 
 import feedparser
 import requests
+from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 
 
@@ -156,6 +157,31 @@ def _http_fetch(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
     }
 
 
+def _web_browse(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
+    url = args.get("url")
+    if not url:
+        raise ValueError("web_browse requires 'url'")
+    timeout = int(args.get("timeout", 15))
+    response = requests.get(url, timeout=timeout)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.content, "lxml")
+    for script in soup(["script", "style"]):
+        script.decompose()
+    text = soup.get_text()
+    lines = (line.strip() for line in text.splitlines())
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    text = "\n".join(chunk for chunk in chunks if chunk)
+    max_chars = int(args.get("max_chars", 5000))
+    if len(text) > max_chars:
+        text = text[:max_chars] + "\n...[truncated]"
+    return {
+        "url": url,
+        "status_code": response.status_code,
+        "text": text,
+        "length": len(text),
+    }
+
+
 def _web_search(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
     query = args.get("query")
     if not query:
@@ -263,7 +289,7 @@ def build_registry(context: Optional[ToolContext] = None) -> ToolRegistry:
     registry.register(
         ToolSpec(
             name="http_fetch",
-            description="Fetch a URL via HTTP GET.",
+            description="Fetch a URL via HTTP GET and return raw HTML.",
             input_schema={
                 "type": "object",
                 "properties": {
@@ -275,6 +301,22 @@ def build_registry(context: Optional[ToolContext] = None) -> ToolRegistry:
             },
         ),
         _http_fetch,
+    )
+    registry.register(
+        ToolSpec(
+            name="web_browse",
+            description="Fetch a URL and extract clean, readable text using BeautifulSoup.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string"},
+                    "timeout": {"type": "integer", "default": 15},
+                    "max_chars": {"type": "integer", "default": 5000},
+                },
+                "required": ["url"],
+            },
+        ),
+        _web_browse,
     )
     registry.register(
         ToolSpec(

@@ -1,4 +1,4 @@
-"""Local MCP server exposing core tools (web search, RSS, HTTP fetch, file read)."""
+"Local MCP server exposing core tools (web search, RSS, HTTP fetch, file read)."
 from __future__ import annotations
 
 import json
@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 
 import feedparser
 import requests
+from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 
 
@@ -22,6 +23,19 @@ TOOL_SPECS: List[Dict[str, Any]] = [
                 "max_results": {"type": "integer", "default": 5},
             },
             "required": ["query"],
+        },
+    },
+    {
+        "name": "web_browse",
+        "description": "Fetch a URL and extract clean, readable text using BeautifulSoup.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string"},
+                "timeout": {"type": "integer", "default": 15},
+                "max_chars": {"type": "integer", "default": 5000},
+            },
+            "required": ["url"],
         },
     },
     {
@@ -193,6 +207,31 @@ def _handle_http_fetch(args: Dict[str, Any]) -> Dict[str, Any]:
         "status_code": response.status_code,
         "text": text,
         "length": len(response.text),
+    }
+
+
+def _handle_web_browse(args: Dict[str, Any]) -> Dict[str, Any]:
+    url = args.get("url")
+    if not url:
+        raise ValueError("web_browse requires 'url'")
+    timeout = int(args.get("timeout", 15))
+    response = requests.get(url, timeout=timeout)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.content, "lxml")
+    for script in soup(["script", "style"]):
+        script.decompose()
+    text = soup.get_text()
+    lines = (line.strip() for line in text.splitlines())
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    text = "\n".join(chunk for chunk in chunks if chunk)
+    max_chars = int(args.get("max_chars", 5000))
+    if len(text) > max_chars:
+        text = text[:max_chars] + "\n...[truncated]"
+    return {
+        "url": url,
+        "status_code": response.status_code,
+        "text": text,
+        "length": len(text),
     }
 
 
@@ -399,10 +438,19 @@ def _handle_tool_call(params: Dict[str, Any]) -> Dict[str, Any]:
         return _handle_rss_reader(args)
     if name == "filesystem_read":
         return _handle_filesystem_read(args)
+    if name == "web_browse":
+        return _handle_web_browse(args)
     raise ValueError(f"Unknown tool: {name}")
 
 
 def main() -> None:
+    # Check for a command-line argument to run a test
+    if len(sys.argv) > 1 and sys.argv[1] == "test_browse":
+        print("---" + " Running web_browse test ---")
+        result = _handle_web_browse({"url": "https://www.google.com"})
+        print(json.dumps(result, indent=2))
+        return
+
     for line in sys.stdin:
         raw = line.strip()
         if not raw:
