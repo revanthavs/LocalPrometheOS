@@ -108,4 +108,34 @@ def load_config(path: Optional[str] = None) -> AppConfig:
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
     data = yaml.safe_load(config_path.read_text()) or {}
-    return AppConfig.from_dict(data)
+    config = AppConfig.from_dict(data)
+    _normalize_mcp_commands(config, config_path)
+    return config
+
+
+def _normalize_mcp_commands(config: AppConfig, config_path: Path) -> None:
+    if not config.mcp.servers:
+        return
+    base_dir = config_path.parent
+    root_dir = base_dir.parent
+    for server in config.mcp.servers:
+        if not server.command:
+            continue
+        normalized: List[str] = []
+        for idx, part in enumerate(server.command):
+            if idx == 0:
+                normalized.append(part)
+                continue
+            if os.path.isabs(part):
+                normalized.append(part)
+                continue
+            candidate = base_dir / part
+            if candidate.exists():
+                normalized.append(str(candidate.resolve()))
+                continue
+            candidate = root_dir / part
+            if candidate.exists():
+                normalized.append(str(candidate.resolve()))
+                continue
+            normalized.append(part)
+        server.command = normalized

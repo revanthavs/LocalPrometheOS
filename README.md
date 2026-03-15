@@ -30,7 +30,7 @@ pip install -r requirements.txt
 ```
 
 ## Configure
-Edit `/Users/revanthatmakuri/Developer/LocalPrometheOS/config/config.yaml` to select the model name and MCP servers.
+Edit `LocalPrometheOS/config/config.yaml` to select the model name and MCP servers.
 
 LM Studio should be running at:
 ```
@@ -39,23 +39,23 @@ http://localhost:1234/v1
 
 ## Run CLI
 ```bash
-python /Users/revanthatmakuri/Developer/LocalPrometheOS/main.py list-tasks
-python /Users/revanthatmakuri/Developer/LocalPrometheOS/main.py run "Bitcoin Monitor"
-python /Users/revanthatmakuri/Developer/LocalPrometheOS/main.py start
+python main.py list-tasks
+python main.py run "Bitcoin Monitor"
+python main.py start
 
 # Or use the helper script:
-/Users/revanthatmakuri/Developer/LocalPrometheOS/prometheos list-tasks
-/Users/revanthatmakuri/Developer/LocalPrometheOS/prometheos run "Bitcoin Monitor"
-/Users/revanthatmakuri/Developer/LocalPrometheOS/prometheos start
+./prometheos list-tasks
+./prometheos run "Bitcoin Monitor"
+./prometheos start
 ```
 
 ## Start UI
 ```bash
-streamlit run /Users/revanthatmakuri/Developer/LocalPrometheOS/ui/streamlit_app.py
+streamlit run ui/streamlit_app.py
 ```
 
 ## Task Definitions
-Tasks live in `/Users/revanthatmakuri/Developer/LocalPrometheOS/tasks/` as individual YAML files.
+Tasks live in `tasks/` as individual YAML files.
 
 Example:
 ```yaml
@@ -104,8 +104,19 @@ local-prometheos/
 ```
 
 ## Notes
-- Built-in tools use public endpoints (CoinGecko, Google News RSS) without paid APIs.
-- MCP tools can be added in `config/config.yaml` to connect local servers.
+- Built-in tools use public endpoints (CoinGecko, Google News RSS, DuckDuckGo) without paid APIs.
+- A default local MCP server is included at `tools/mcp_server.py` with core tools:
+  - `web_search`
+  - `news_search`
+  - `arxiv_search`
+  - `wikipedia_search`
+  - `reddit_search` (rate-limited)
+  - `github_search` (rate-limited)
+  - `hn_top`
+  - `http_fetch`
+  - `rss_reader`
+  - `filesystem_read`
+- The default MCP server is enabled in `config/config.yaml`. Remove it if you prefer no MCP tools.
 
 ## License
 MIT

@@ -14,13 +14,13 @@ storage:
   results_dir: "data/results"
 
 mcp:
-  servers: []
-  # Example MCP server definitions:
-  # - name: "local-tools"
-  #   transport: "stdio"
-  #   command: ["/path/to/mcp-server", "--stdio"]
-  #   env: {}
-  #   timeout: 30
+  servers:
+    - name: "local-core"
+      transport: "stdio"
+      command: ["python", "tools/mcp_server.py"]
+      env: {}
+      timeout: 30
+  # Example HTTP MCP server:
   # - name: "remote-tools"
   #   transport: "http"
   #   url: "http://localhost:4000/mcp"

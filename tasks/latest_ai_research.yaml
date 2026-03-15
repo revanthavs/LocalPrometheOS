@@ -1,0 +1,14 @@
+name: Latest AI Research
+schedule: 30 20 * * *
+goal: Tell me about latest AI research breakthroughs that I should be aware of and
+  why it's a big deal
+tools:
+- http_fetch
+- rss_reader
+- local-core/web_search
+- local-core/http_fetch
+inputs:
+  timeout: 15
+  max_chars: 5000
+  limit: 5
+enabled: true

@@ -1,0 +1,32 @@
+name: Best Amazon Deals
+schedule: 32 20 * * *
+goal: Tell me best amazon deals, give me list of top 20
+tools:
+- local-core/http_fetch
+- local-core/web_search
+- market_sentiment
+- rss_reader
+- crypto_news
+- crypto_price
+- filesystem_read
+- http_fetch
+- local-core/arxiv_search
+- local-core/filesystem_read
+- local-core/hn_top
+- local-core/news_search
+- local-core/rss_reader
+- web_search
+- local-core/github_search
+- local-core/reddit_search
+- local-core/wikipedia_search
+inputs:
+  timeout: 15
+  max_chars: 5000
+  query: bitcoin
+  max_results: 5
+  limit: 5
+  coin_id: bitcoin
+  vs_currency: usd
+  per_page: 10
+  sort: new
+enabled: true

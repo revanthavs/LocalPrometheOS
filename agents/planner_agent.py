@@ -22,6 +22,7 @@ class PlannerAgent:
             }
             for tool in tools
         ]
+        available_tool_names = {tool.name for tool in tools}
         prompt = (
             "You are a planner agent for LocalPrometheOS.\n"
             "Output a strict JSON object with a 'steps' array.\n"
@@ -42,15 +43,23 @@ class PlannerAgent:
         )
         plan = parse_json_from_text(response)
         if not plan or "steps" not in plan:
-            plan = {
-                "steps": [
+            plan = {"steps": []}
+
+        steps = plan.get("steps", [])
+        planned_tools = {step.get("tool") for step in steps if isinstance(step, dict)}
+        for tool_name in task.tools:
+            if tool_name not in planned_tools:
+                steps.append(
                     {
-                        "id": f"step-{idx+1}",
+                        "id": f"step-{len(steps)+1}",
                         "purpose": f"Run tool {tool_name}",
                         "tool": tool_name,
                         "args": {"inputs": "$inputs"},
                     }
-                    for idx, tool_name in enumerate(task.tools)
-                ]
-            }
+                )
+        # If planner referenced tools that are not available, keep them but note it in purpose.
+        for step in steps:
+            if isinstance(step, dict) and step.get("tool") not in available_tool_names:
+                step["purpose"] = f"{step.get('purpose', '')} (tool not in registry)"
+        plan["steps"] = steps
         return plan

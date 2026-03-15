@@ -8,6 +8,7 @@ import json
 
 import feedparser
 import requests
+from duckduckgo_search import DDGS
 
 
 @dataclass
@@ -59,7 +60,19 @@ class ToolRegistry:
             if not self._mcp_specs or name not in self._mcp_specs:
                 self.refresh_mcp_tools()
             if name in self._mcp_specs:
-                return self._mcp_client.call_tool(name, args)
+                try:
+                    return self._mcp_client.call_tool(name, args)
+                except Exception:  # noqa: BLE001
+                    # Fall back to built-in tool if available.
+                    base_name = name.split("/")[-1]
+                    if base_name in self._tools:
+                        return self._tools[base_name](args, self._context)
+                    raise
+        # Fallback for namespaced tools that map to built-ins.
+        if "/" in name:
+            base_name = name.split("/")[-1]
+            if base_name in self._tools:
+                return self._tools[base_name](args, self._context)
         raise KeyError(f"Unknown tool: {name}")
 
 
@@ -141,6 +154,24 @@ def _http_fetch(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
         "text": text,
         "length": len(response.text),
     }
+
+
+def _web_search(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
+    query = args.get("query")
+    if not query:
+        raise ValueError("web_search requires 'query'")
+    max_results = int(args.get("max_results", 5))
+    results: List[Dict[str, Any]] = []
+    with DDGS() as ddgs:
+        for entry in ddgs.text(query, max_results=max_results):
+            results.append(
+                {
+                    "title": entry.get("title"),
+                    "url": entry.get("href"),
+                    "snippet": entry.get("body"),
+                }
+            )
+    return {"query": query, "results": results}
 
 
 def _filesystem_read(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
@@ -244,6 +275,21 @@ def build_registry(context: Optional[ToolContext] = None) -> ToolRegistry:
             },
         ),
         _http_fetch,
+    )
+    registry.register(
+        ToolSpec(
+            name="web_search",
+            description="Search the web using DuckDuckGo.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "max_results": {"type": "integer", "default": 5},
+                },
+                "required": ["query"],
+            },
+        ),
+        _web_search,
     )
     registry.register(
         ToolSpec(
