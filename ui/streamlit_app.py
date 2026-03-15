@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import sys
+from typing import Any, Dict, List, Tuple
 
 import streamlit as st
 
@@ -40,6 +41,45 @@ def _build_controller() -> AgentController:
         mcp_client = MCPClient(config.mcp.servers)
         tool_registry.set_mcp_client(mcp_client)
     return AgentController(config=config, db=db, tool_registry=tool_registry, lm_client=lm_client)
+
+
+def _get_tool_choices() -> Tuple[List[str], List[str]]:
+    tool_registry = build_registry(ToolContext())
+    if config.mcp.servers:
+        mcp_client = MCPClient(config.mcp.servers)
+        tool_registry.set_mcp_client(mcp_client)
+    mcp_errors: List[str] = []
+    try:
+        specs = tool_registry.list_specs()
+    except Exception as exc:  # noqa: BLE001
+        specs = []
+        mcp_errors.append(str(exc))
+    names = sorted({spec.name for spec in specs})
+    return names, mcp_errors
+
+
+def _parse_kv_inputs(text: str) -> Tuple[Dict[str, Any], List[str]]:
+    inputs: Dict[str, Any] = {}
+    errors: List[str] = []
+    for idx, line in enumerate(text.splitlines(), start=1):
+        raw = line.strip()
+        if not raw:
+            continue
+        if "=" not in raw:
+            errors.append(f"Line {idx}: expected key=value format.")
+            continue
+        key, value = raw.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            errors.append(f"Line {idx}: key is empty.")
+            continue
+        try:
+            parsed_value = json.loads(value)
+        except json.JSONDecodeError:
+            parsed_value = value
+        inputs[key] = parsed_value
+    return inputs, errors
 
 st.title("LocalPrometheOS — Autonomous AI monitoring powered by local models.")
 
@@ -88,24 +128,103 @@ else:
     st.info("No tasks found.")
 
 st.header("Create Task")
+tool_choices, mcp_errors = _get_tool_choices()
+if mcp_errors:
+    st.warning("Some MCP tools could not be loaded. Built-in tools are still available.")
+
+templates = {
+    "Blank": {
+        "name": "",
+        "goal": "",
+        "tools": [],
+        "inputs_kv": "",
+        "inputs_json": "{}",
+    },
+    "Bitcoin Monitor": {
+        "name": "Bitcoin Monitor",
+        "goal": "Determine whether to buy, hold, or pause Bitcoin purchases.",
+        "tools": ["crypto_price", "crypto_news", "market_sentiment"],
+        "inputs_kv": "coin_id=bitcoin\nvs_currency=usd\nquery=bitcoin\nlimit=5",
+        "inputs_json": "{}",
+    },
+}
+
+if "template_applied" not in st.session_state:
+    st.session_state.template_applied = "Blank"
+if "task_name" not in st.session_state:
+    st.session_state.task_name = ""
+if "task_goal" not in st.session_state:
+    st.session_state.task_goal = ""
+if "task_tools" not in st.session_state:
+    st.session_state.task_tools = []
+if "task_inputs_kv" not in st.session_state:
+    st.session_state.task_inputs_kv = ""
+if "task_inputs_json" not in st.session_state:
+    st.session_state.task_inputs_json = "{}"
+if "schedule_value" not in st.session_state:
+    st.session_state.schedule_value = "0 15 * * *"
+
+selected_template = st.selectbox("Template", list(templates.keys()))
+if selected_template != st.session_state.template_applied:
+    template = templates[selected_template]
+    st.session_state.task_name = template["name"]
+    st.session_state.task_goal = template["goal"]
+    st.session_state.task_tools = template["tools"]
+    st.session_state.task_inputs_kv = template["inputs_kv"]
+    st.session_state.task_inputs_json = template["inputs_json"]
+    if selected_template == "Bitcoin Monitor":
+        st.session_state.schedule_value = "0 15 * * *"
+    st.session_state.template_applied = selected_template
+
+schedule_presets = {
+    "Daily at 15:00 UTC": "0 15 * * *",
+    "Daily at 09:00 UTC": "0 9 * * *",
+    "Hourly": "0 * * * *",
+    "Every 6 hours": "0 */6 * * *",
+    "Weekly (Mon 09:00 UTC)": "0 9 * * 1",
+    "Custom": None,
+}
+selected_preset = st.selectbox("Schedule preset", list(schedule_presets.keys()))
+if selected_preset != "Custom":
+    st.session_state.schedule_value = schedule_presets[selected_preset] or st.session_state.schedule_value
+
 with st.form("create_task_form"):
-    name = st.text_input("Name", value="")
-    schedule = st.text_input("Cron schedule", value="0 15 * * *")
-    goal = st.text_area("Goal", value="")
-    tools = st.text_input("Tools (comma-separated)", value="crypto_price, crypto_news")
-    inputs = st.text_area("Inputs (JSON)", value="{}")
+    name = st.text_input("Name", key="task_name")
+    schedule = st.text_input("Cron schedule", key="schedule_value")
+    goal = st.text_area("Goal", key="task_goal")
+    tools_selected = st.multiselect(
+        "Tools",
+        options=tool_choices,
+        default=st.session_state.task_tools,
+        key="task_tools",
+        help="Select from available built-in and MCP tools.",
+    )
+    st.caption("Inputs: provide key=value lines for common inputs. Use JSON override for advanced structures.")
+    inputs_kv = st.text_area("Inputs (key=value per line)", key="task_inputs_kv")
+    inputs_json = st.text_area("Inputs JSON override (optional)", key="task_inputs_json")
     enabled = st.checkbox("Enabled", value=True)
     submitted = st.form_submit_button("Create Task")
 
 if submitted:
     try:
-        tools_list = [t.strip() for t in tools.split(",") if t.strip()]
-        inputs_dict = json.loads(inputs) if inputs else {}
+        if not name.strip():
+            raise ValueError("Task name is required.")
+        if len(schedule.split()) < 5:
+            raise ValueError("Cron schedule must have 5 fields.")
+        if not tools_selected:
+            raise ValueError("Select at least one tool.")
+
+        inputs_dict, kv_errors = _parse_kv_inputs(inputs_kv)
+        if kv_errors:
+            raise ValueError("; ".join(kv_errors))
+        if inputs_json and inputs_json.strip() not in ("", "{}"):
+            inputs_dict = json.loads(inputs_json)
+
         new_task = TaskDefinition(
-            name=name,
+            name=name.strip(),
             schedule=schedule,
             goal=goal,
-            tools=tools_list,
+            tools=tools_selected,
             inputs=inputs_dict,
             enabled=enabled,
         )

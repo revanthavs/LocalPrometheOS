@@ -1,0 +1,8 @@
+name: New AI news
+schedule: 0 * * * *
+goal: Tell me latest news in AI
+tools:
+- http_fetch
+- rss_reader
+inputs: {}
+enabled: true
