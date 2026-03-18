@@ -1,0 +1,9 @@
+name: "AI News Monitor"
+schedule: "0 9 * * *"
+goal: "Summarize the most important AI news from the past 24 hours. Highlight any breakthroughs, product launches, or policy changes that are significant."
+tools:
+  - "rss_reader"
+inputs:
+  url: "https://feeds.feedburner.com/TechCrunch/startups"
+  limit: 10
+enabled: true

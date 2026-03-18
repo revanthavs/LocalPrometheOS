@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 import feedparser
 import requests
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 
 TOOL_SPECS: List[Dict[str, Any]] = [

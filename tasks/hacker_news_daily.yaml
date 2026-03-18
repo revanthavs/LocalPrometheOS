@@ -1,0 +1,8 @@
+name: "Hacker News Top Stories"
+schedule: "0 7 * * *"
+goal: "Fetch the top 10 Hacker News stories and summarize why each is值得注意 (worth noticing). Focus on technical depth and innovation."
+tools:
+  - "hn_top"
+inputs:
+  limit: 10
+enabled: true

@@ -51,9 +51,14 @@ def load_tasks(tasks_dir: Path) -> List[TaskDefinition]:
     if not tasks_dir.exists():
         return []
     tasks: List[TaskDefinition] = []
-    for path in sorted(tasks_dir.glob("*.yaml")):
+    for path in sorted(tasks_dir.glob("**/*.yaml")):
+        # Skip hidden directories (like .git, .claude) and __pycache__
+        if any(part.startswith(".") or part == "__pycache__" for part in path.parts):
+            continue
         tasks.append(load_task_file(path))
-    for path in sorted(tasks_dir.glob("*.yml")):
+    for path in sorted(tasks_dir.glob("**/*.yml")):
+        if any(part.startswith(".") or part == "__pycache__" for part in path.parts):
+            continue
         tasks.append(load_task_file(path))
     return tasks
 
