@@ -7,10 +7,17 @@ venv/
 .idea/
 .vscode/
 
+# Local tasks (private)
+/tasks/local/
+
 # Local data
 /data/
 *.db
 *.log
+CLAUDE.md
+Architecture.md
+.claude/
+.claude-cache/
 
 # Streamlit
 .streamlit/

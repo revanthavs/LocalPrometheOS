@@ -1,0 +1,13 @@
+name: "Crypto Price Tracker"
+schedule: "0 8,18 * * *"
+goal: "Track Bitcoin and Ethereum prices. Report current price, 24h change, and suggest whether to buy, hold, or sell based on market sentiment."
+tools:
+  - "crypto_price"
+  - "crypto_news"
+  - "market_sentiment"
+inputs:
+  coin_id: "bitcoin"
+  vs_currency: "usd"
+  query: "bitcoin"
+  limit: 5
+enabled: true
