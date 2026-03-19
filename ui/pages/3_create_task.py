@@ -194,18 +194,18 @@ def _render_progress(step: int, total: int = 4) -> None:
                 label_text = f"○ {labels[i]}"
 
             st.markdown(f"""
-            <div style="text-align:center;">
-                <div class="wizard-step-circle {circle_class}">{i + 1}</div>
-                <div style="font-size:11px;color:{label_color};font-weight:500;margin-top:4px;white-space:nowrap;">{label_text}</div>
-            </div>
-            """, unsafe_allow_html=True)
+<div style="text-align:center;">
+    <div class="wizard-step-circle {circle_class}">{i + 1}</div>
+    <div style="font-size:11px;color:{label_color};font-weight:500;margin-top:4px;white-space:nowrap;">{label_text}</div>
+</div>
+""", unsafe_allow_html=True)
 
         if i < total - 1:
             connector_color = "var(--accent)" if i < step else "var(--border)"
             with cols[i * 2]:
                 st.markdown(f"""
-                <div style="height:2px;background:{connector_color};margin-top:14px;border-radius:1px;"></div>
-                """, unsafe_allow_html=True)
+<div style="height:2px;background:{connector_color};margin-top:14px;border-radius:1px;"></div>
+""", unsafe_allow_html=True)
 
 
 def _render_step_basics() -> bool:
@@ -458,20 +458,20 @@ def _render_step_review() -> tuple[bool, str]:
 
     # Summary
     st.markdown("""
-    <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-            <div>
-                <h3 style="margin:0;">{}</h3>
-                <span class="badge {}">{}</span>
-            </div>
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+        <div>
+            <h3 style="margin:0;">{}</h3>
+            <span class="badge {}">{}</span>
         </div>
-        <table style="width:100%;font-size:13px;">
-            <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Goal</td><td style="color:var(--text-primary);padding:4px 0;">{}</td></tr>
-            <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Schedule</td><td style="color:var(--accent);padding:4px 0;font-family:var(--font-mono);">{}</td></tr>
-            <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Tools</td><td style="color:var(--text-primary);padding:4px 0;">{}</td></tr>
-        </table>
     </div>
-    """.format(
+    <table style="width:100%;font-size:13px;">
+        <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Goal</td><td style="color:var(--text-primary);padding:4px 0;">{}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Schedule</td><td style="color:var(--accent);padding:4px 0;font-family:var(--font-mono);">{}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Tools</td><td style="color:var(--text-primary);padding:4px 0;">{}</td></tr>
+    </table>
+</div>
+""".format(
         data.get("name", ""),
         "badge-success" if data.get("enabled") else "badge-muted",
         "Enabled" if data.get("enabled") else "Disabled",

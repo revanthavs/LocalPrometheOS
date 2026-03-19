@@ -50,12 +50,12 @@ def _check_lmstudio(base_url, timeout=3):
 
 def _render_metric_card(value: str, label: str, sub: str = "", color: str = "var(--text-primary)"):
     st.markdown(f"""
-    <div class="metric-card">
-        <div class="metric-value" style="color:{color};">{value}</div>
-        <div class="metric-label">{label}</div>
-        {f'<div class="metric-sub">{sub}</div>' if sub else ''}
-    </div>
-    """, unsafe_allow_html=True)
+<div class="metric-card">
+    <div class="metric-value" style="color:{color};">{value}</div>
+    <div class="metric-label">{label}</div>
+    {f'<div class="metric-sub">{sub}</div>' if sub else ''}
+</div>
+""", unsafe_allow_html=True)
 
 
 def main():
@@ -98,24 +98,24 @@ def main():
     last_run_time = _relative_time(stats.get("last_run_time"))
 
     st.markdown(f"""
-    <div style="display:flex;gap:16px;padding:12px 16px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:var(--space-5);flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:13px;color:var(--text-secondary);">LM Studio:</span>
-            <span style="font-size:13px;font-weight:600;">{lm_status}{lm_latency}</span>
-        </div>
-        <div style="width:1px;background:var(--border);"></div>
-        <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:13px;color:var(--text-secondary);">Tasks:</span>
-            <span style="font-size:13px;font-weight:600;">{enabled_count} enabled / {total_count} total</span>
-        </div>
-        <div style="width:1px;background:var(--border);"></div>
-        <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:13px;color:var(--text-secondary);">Last run:</span>
-            <span style="font-size:13px;font-weight:600;">{last_run_task or '—'}</span>
-            <span style="font-size:12px;color:var(--text-muted);">({last_run_time})</span>
-        </div>
+<div style="display:flex;gap:16px;padding:12px 16px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:var(--space-5);flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:13px;color:var(--text-secondary);">LM Studio:</span>
+        <span style="font-size:13px;font-weight:600;">{lm_status}{lm_latency}</span>
     </div>
-    """, unsafe_allow_html=True)
+    <div style="width:1px;background:var(--border);"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:13px;color:var(--text-secondary);">Tasks:</span>
+        <span style="font-size:13px;font-weight:600;">{enabled_count} enabled / {total_count} total</span>
+    </div>
+    <div style="width:1px;background:var(--border);"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:13px;color:var(--text-secondary);">Last run:</span>
+        <span style="font-size:13px;font-weight:600;">{last_run_task or '—'}</span>
+        <span style="font-size:12px;color:var(--text-muted);">({last_run_time})</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     # ── Metric Cards ───────────────────────────────────
     success_rate = int(success_runs / total_runs * 100) if total_runs > 0 else 0
@@ -164,12 +164,12 @@ def main():
             st.markdown("")
     else:
         st.markdown("""
-        <div class="empty-state">
-            <div class="empty-state-icon">📭</div>
-            <div class="empty-state-title">No results yet</div>
-            <div class="empty-state-desc">Run a task or create new ones to see results here.</div>
-        </div>
-        """, unsafe_allow_html=True)
+<div class="empty-state">
+    <div class="empty-state-icon">📭</div>
+    <div class="empty-state-title">No results yet</div>
+    <div class="empty-state-desc">Run a task or create new ones to see results here.</div>
+</div>
+""", unsafe_allow_html=True)
         col_c1, col_c2, col_c3 = st.columns([1, 1, 1])
         with col_c1:
             if st.button("➕ Create Task", use_container_width=True):

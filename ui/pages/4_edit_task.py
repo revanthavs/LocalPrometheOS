@@ -253,20 +253,20 @@ def main():
 
         cron = _build_cron(mode, data.get("schedule_hour", 9), data.get("schedule_minute", 0), data.get("schedule_weekday", "Monday"), data.get("schedule_interval", 1), data.get("schedule_custom", "0 9 * * *"))
         st.markdown(f"""
-        <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-                <div>
-                    <h3 style="margin:0;">{data.get('name', '')}</h3>
-                    <span class="badge {'badge-success' if data.get('enabled') else 'badge-muted'}">{'Enabled' if data.get('enabled') else 'Disabled'}</span>
-                </div>
-            </div>
-            <table style="width:100%;font-size:13px;">
-                <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Goal</td><td style="color:var(--text-primary);padding:4px 0;">{data.get('goal', '')[:200]}</td></tr>
-                <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Schedule</td><td style="color:var(--accent);padding:4px 0;font-family:var(--font-mono);">{cron} — {_cron_to_human(cron)}</td></tr>
-                <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Tools</td><td style="color:var(--text-primary);padding:4px 0;">{', '.join(f'`{t}`' for t in data.get('tools', []))}</td></tr>
-            </table>
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+        <div>
+            <h3 style="margin:0;">{data.get('name', '')}</h3>
+            <span class="badge {'badge-success' if data.get('enabled') else 'badge-muted'}">{'Enabled' if data.get('enabled') else 'Disabled'}</span>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    <table style="width:100%;font-size:13px;">
+        <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Goal</td><td style="color:var(--text-primary);padding:4px 0;">{data.get('goal', '')[:200]}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Schedule</td><td style="color:var(--accent);padding:4px 0;font-family:var(--font-mono);">{cron} — {_cron_to_human(cron)}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:4px 8px 4px 0;">Tools</td><td style="color:var(--text-primary);padding:4px 0;">{', '.join(f'`{t}`' for t in data.get('tools', []))}</td></tr>
+    </table>
+</div>
+""", unsafe_allow_html=True)
 
     st.markdown("")
     col_s, col_c, col_del = st.columns([1, 1, 1])

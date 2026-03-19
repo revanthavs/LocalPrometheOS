@@ -6,6 +6,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+import re
 
 import streamlit as st
 
@@ -76,8 +77,10 @@ def _get_result_summary(result_json_str: Optional[str]) -> str:
     except Exception:
         raw_summary = result_json_str
     cleaned = clean_result_text(raw_summary) if raw_summary else ""
-    # Escape HTML chars so < > etc render as text, not HTML tags
-    return escape_html(cleaned)[:100] if cleaned else ""
+    # Additional defense: strip any remaining HTML tags that might have been missed
+    cleaned = re.sub(r'<[^>]+>', '', cleaned)
+    # Limit length to prevent overly long previews
+    return cleaned[:100] if cleaned else ""
 
 
 def _get_dot_color(status: str) -> str:
@@ -151,29 +154,29 @@ def main():
         badge_class, badge_label = status_map.get(status, ("badge-muted", status.title()))
 
         st.markdown(f"""
-        <div class="timeline">
-            <div class="timeline-item">
-                <div class="timeline-line">
-                    <div class="timeline-dot" style="background:{dot_color};border-color:var(--bg-primary);"></div>
-                    <div class="timeline-connector"></div>
-                </div>
-                <div class="timeline-content">
-                    <div class="timeline-content-header">
-                        <span class="timeline-task-name">{escape_html(task_name)}</span>
-                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                            <span class="badge {badge_class}">{badge_label}</span>
-                        </div>
-                    </div>
-                    <div class="timeline-run-meta">
-                        <span>🕐 {started[:16] if started else '—'}</span>
-                        <span>⏱ {duration}</span>
-                    </div>
-                    {f'<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">⚠️ {escape_html(error[:100])}</div>' if error else ''}
-                    {f'<div class="timeline-result-preview" style="margin-top:6px;">💬 {result_preview}</div>' if result_preview else ''}
+<div class="timeline">
+    <div class="timeline-item">
+        <div class="timeline-line">
+            <div class="timeline-dot" style="background:{dot_color};border-color:var(--bg-primary);"></div>
+            <div class="timeline-connector"></div>
+        </div>
+        <div class="timeline-content">
+            <div class="timeline-content-header">
+                <span class="timeline-task-name">{escape_html(task_name)}</span>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                    <span class="badge {badge_class}">{badge_label}</span>
                 </div>
             </div>
+            <div class="timeline-run-meta">
+                <span>🕐 {started[:16] if started else '—'}</span>
+                <span>⏱ {duration}</span>
+            </div>
+            {f'<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">⚠️ {escape_html(error[:100])}</div>' if error else ''}
+            {f'<div class="timeline-result-preview" style="margin-top:6px;">💬 {escape_html(result_preview)}</div>' if result_preview else ''}
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 

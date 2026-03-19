@@ -34,12 +34,12 @@ def main():
 
     if not results:
         st.markdown("""
-        <div class="empty-state">
-            <div class="empty-state-icon">📭</div>
-            <div class="empty-state-title">No results yet</div>
-            <div class="empty-state-desc">Run a task to see its results here. Results are generated automatically after each task execution.</div>
-        </div>
-        """, unsafe_allow_html=True)
+<div class="empty-state">
+    <div class="empty-state-icon">📭</div>
+    <div class="empty-state-title">No results yet</div>
+    <div class="empty-state-desc">Run a task to see its results here. Results are generated automatically after each task execution.</div>
+</div>
+""", unsafe_allow_html=True)
         if st.button("➕ Create Task"):
             st.switch_page("pages/3_create_task.py")
         st.markdown('</div>', unsafe_allow_html=True)

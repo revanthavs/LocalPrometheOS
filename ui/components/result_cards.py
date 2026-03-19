@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional, Union
 import streamlit as st
 
 # Import the shared utility for cleaning raw HTML/JSON from LLM responses
-from ui.shared import clean_result_text, escape_html
+from ui.shared import clean_result_text, escape_html, _unwrap_json_string
 
 
 def _relative_time(iso_timestamp: Optional[str]) -> str:
@@ -107,13 +107,13 @@ def _render_tool_outputs_card(tool_outputs: Dict[str, Any]) -> str:
                 change_str = f"{change:+.2f}%" if isinstance(change, (int, float)) else ""
                 change_color = "var(--success)" if (isinstance(change, (int, float)) and change >= 0) else "var(--error)"
                 parts.append(f"""
-                <div class="output-metric">
-                    <div class="output-metric-label">{tool}</div>
-                    <div style="display:flex;align-items:baseline;gap:12px;">
-                        <span class="output-metric-value" style="font-size:22px;font-weight:700;">{price_str}</span>
-                        {f'<span style="font-size:14px;color:{change_color};font-weight:600;">{change_str}</span>' if change_str else ''}
-                    </div>
-                </div>""")
+<div class="output-metric">
+    <div class="output-metric-label">{tool}</div>
+    <div style="display:flex;align-items:baseline;gap:12px;">
+        <span class="output-metric-value" style="font-size:22px;font-weight:700;">{price_str}</span>
+        {f'<span style="font-size:14px;color:{change_color};font-weight:600;">{change_str}</span>' if change_str else ''}
+    </div>
+</div>""")
 
         # News items: show headlines
         elif tool in ("crypto_news", "news_search", "rss_reader") and isinstance(result, dict):
@@ -126,10 +126,10 @@ def _render_tool_outputs_card(tool_outputs: Dict[str, Any]) -> str:
                         headlines.append(f'<div style="margin-bottom:6px;padding:6px 8px;background:var(--bg-tertiary);border-radius:var(--radius-sm);border-left:3px solid var(--accent);"><span style="font-size:12px;color:var(--text-primary);line-height:1.4;">{escape_html(title)}{"..." if len(item.get("title","")) > 70 else ""}</span></div>')
                 if headlines:
                     parts.append(f"""
-                    <div style="margin-bottom:8px;">
-                        <span class="tool-chip">{escape_html(tool)}</span>
-                        <div style="margin-top:6px;">{''.join(headlines)}</div>
-                    </div>""")
+<div style="margin-bottom:8px;">
+    <span class="tool-chip">{escape_html(tool)}</span>
+    <div style="margin-top:6px;">{''.join(headlines)}</div>
+</div>""")
 
         # market_sentiment
         elif tool == "market_sentiment" and isinstance(result, dict):
@@ -137,10 +137,10 @@ def _render_tool_outputs_card(tool_outputs: Dict[str, Any]) -> str:
             label = result.get("label", "")
             if score is not None or label:
                 parts.append(f"""
-                <div class="output-metric">
-                    <div class="output-metric-label">{tool}</div>
-                    <span class="output-metric-value" style="font-size:15px;">{label or str(score)}</span>
-                </div>""")
+<div class="output-metric">
+    <div class="output-metric-label">{tool}</div>
+    <span class="output-metric-value" style="font-size:15px;">{label or str(score)}</span>
+</div>""")
 
         # hn_top / github_search
         elif tool in ("hn_top", "github_search", "arxiv_search") and isinstance(result, dict):
@@ -153,10 +153,10 @@ def _render_tool_outputs_card(tool_outputs: Dict[str, Any]) -> str:
                         top_items.append(f'<div style="font-size:12px;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border);">• {escape_html(title)}</div>')
                 if top_items:
                     parts.append(f"""
-                    <div style="margin-bottom:8px;">
-                        <span class="tool-chip">{escape_html(tool)}</span>
-                        <div style="margin-top:4px;">{''.join(top_items)}</div>
-                    </div>""")
+<div style="margin-bottom:8px;">
+    <span class="tool-chip">{escape_html(tool)}</span>
+    <div style="margin-top:4px;">{''.join(top_items)}</div>
+</div>""")
 
     return "\n".join(parts)
 
@@ -173,10 +173,10 @@ def _render_key_metrics(key_metrics: Union[Dict, list]) -> str:
             formatted_value = _render_metric_value(key, value)
             display_key = key.replace("_", " ").title()
             parts.append(f"""
-            <div class="key-metric-pill">
-                <div class="key-metric-label">{escape_html(display_key)}</div>
-                <div class="key-metric-value">{escape_html(formatted_value)}</div>
-            </div>""")
+<div class="key-metric-pill">
+    <div class="key-metric-label">{escape_html(display_key)}</div>
+    <div class="key-metric-value">{escape_html(formatted_value)}</div>
+</div>""")
 
     elif isinstance(key_metrics, list):
         for metric in key_metrics:
@@ -186,10 +186,10 @@ def _render_key_metrics(key_metrics: Union[Dict, list]) -> str:
                 status = metric.get("status", "")
                 val = f"{impact} — {status}" if (impact or status) else str(metric)
                 parts.append(f"""
-                <div class="key-metric-pill">
-                    <div class="key-metric-label">{escape_html(name)}</div>
-                    <div class="key-metric-value">{escape_html(val)}</div>
-                </div>""")
+<div class="key-metric-pill">
+    <div class="key-metric-label">{escape_html(name)}</div>
+    <div class="key-metric-value">{escape_html(val)}</div>
+</div>""")
 
     if not parts:
         return ""
@@ -242,25 +242,25 @@ def render_result_card(row: Dict[str, Any], show_task_name: bool = True) -> None
 
     # ── Header ──────────────────────────────────────────
     st.markdown(f"""
-    <div class="result-card">
-        <div class="result-card-header">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <span style="font-size:15px;font-weight:700;color:var(--text-primary);">{task_name}</span>
-                <span class="badge {status_class}">{status_label}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-                <span style="font-size:12px;color:var(--text-muted);">{time_str}</span>
-            </div>
+<div class="result-card">
+    <div class="result-card-header">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="font-size:15px;font-weight:700;color:var(--text-primary);">{task_name}</span>
+            <span class="badge {status_class}">{status_label}</span>
         </div>
-    """, unsafe_allow_html=True)
+        <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:12px;color:var(--text-muted);">{time_str}</span>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
     # ── Hero Summary ────────────────────────────────────
     if summary:
         st.markdown(f"""
-        <div class="result-hero">
-            <div class="result-hero-summary">{safe_summary}</div>
-        </div>
-        """, unsafe_allow_html=True)
+<div class="result-hero">
+    <div class="result-hero-summary">{safe_summary}</div>
+</div>
+""", unsafe_allow_html=True)
 
     # ── Sentiment + Recommendation ───────────────────────
     # Use Streamlit-native components for text content (more reliable than HTML)
@@ -281,11 +281,11 @@ def render_result_card(row: Dict[str, Any], show_task_name: bool = True) -> None
     metrics_html = _render_key_metrics(key_metrics)
     if metrics_html:
         st.markdown(f"""
-        <div class="result-metrics-section">
-            <div class="result-section-label">📊 Key Metrics</div>
-            {metrics_html}
-        </div>
-        """, unsafe_allow_html=True)
+<div class="result-metrics-section">
+    <div class="result-section-label">📊 Key Metrics</div>
+    {metrics_html}
+</div>
+""", unsafe_allow_html=True)
 
     # ── Tool Outputs ─────────────────────────────────────
     if tool_outputs:

@@ -81,14 +81,14 @@ def main():
         run_id = log.get("run_id")
 
         st.markdown(f"""
-        <div style="display:flex;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;align-items:flex-start;">
-            <span class="badge {level_class}" style="flex-shrink:0;margin-top:2px;">{level}</span>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">{ts}{f' · Run #{run_id}' if run_id else ''}</div>
-                <div style="font-size:13px;color:var(--text-primary);font-family:var(--font-mono);word-break:break-word;">{message}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+<div style="display:flex;gap:12px;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;align-items:flex-start;">
+    <span class="badge {level_class}" style="flex-shrink:0;margin-top:2px;">{level}</span>
+    <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">{ts}{f' · Run #{run_id}' if run_id else ''}</div>
+        <div style="font-size:13px;color:var(--text-primary);font-family:var(--font-mono);word-break:break-word;">{message}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 

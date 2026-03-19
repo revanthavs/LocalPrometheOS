@@ -76,9 +76,13 @@ def _strip_html(text: str) -> str:
     if not isinstance(text, str):
         return str(text)
     # First decode HTML entities so they become regular chars, then strip tags
-    text = text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&').replace('&quot;', '"').replace('&#39;', "'").replace('&nbsp;', ' ').replace('&apos;', "'")
-    # Remove HTML tags
-    text = re.sub(r'<[^>]+>', '', text)
+    import html
+    text = html.unescape(text)
+    # Remove HTML tags - handle cases where tags might have > inside content
+    # This regex matches < followed by any characters (non-greedy) up to >
+    text = re.sub(r'<[^>]*>', '', text)
+    # Also handle incomplete tags (missing closing >)
+    text = re.sub(r'<[^>]*$', '', text)
     return text.strip()
 
 
@@ -141,7 +145,8 @@ def clean_result_text(value: Any) -> str:
     cleaned = _strip_html(cleaned)
     # Final pass: remove any remaining HTML tag fragments that might have been missed
     cleaned = re.sub(r'<\/?[a-zA-Z][^>]*>', '', cleaned)
-    return cleaned if cleaned else str(value)
+    # Return cleaned string (even if empty) or original value as string if cleaning failed
+    return cleaned if cleaned is not None else str(value)
 
 
 def escape_html(text: str) -> str:
