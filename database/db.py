@@ -193,3 +193,73 @@ class Database:
                 (limit,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def get_run_history(
+        self,
+        task_name: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        with self.connect() as conn:
+            query = """
+                SELECT r.id, r.task_name, r.scheduled_for, r.started_at, r.finished_at,
+                       r.status, r.error, res.result_json
+                FROM task_runs r
+                LEFT JOIN task_results res ON res.run_id = r.id
+            """
+            params: List[Any] = []
+            if task_name:
+                query += " WHERE r.task_name = ?"
+                params.append(task_name)
+            query += " ORDER BY r.started_at DESC LIMIT ?"
+            params.append(limit)
+            rows = conn.execute(query, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_task_stats(self) -> Dict[str, Any]:
+        with self.connect() as conn:
+            total_runs_row = conn.execute("SELECT COUNT(*) as count FROM task_runs").fetchone()
+            total_runs = total_runs_row["count"] if total_runs_row else 0
+
+            success_runs_row = conn.execute(
+                "SELECT COUNT(*) as count FROM task_runs WHERE status = 'success'"
+            ).fetchone()
+            success_runs = success_runs_row["count"] if success_runs_row else 0
+
+            failed_runs_row = conn.execute(
+                "SELECT COUNT(*) as count FROM task_runs WHERE status = 'error'"
+            ).fetchone()
+            failed_runs = failed_runs_row["count"] if failed_runs_row else 0
+
+            active_tasks_row = conn.execute(
+                "SELECT COUNT(*) as count FROM tasks WHERE enabled = 1"
+            ).fetchone()
+            active_tasks = active_tasks_row["count"] if active_tasks_row else 0
+
+            total_tasks_row = conn.execute("SELECT COUNT(*) as count FROM tasks").fetchone()
+            total_tasks = total_tasks_row["count"] if total_tasks_row else 0
+
+            last_run_row = conn.execute(
+                "SELECT task_name, finished_at FROM task_runs ORDER BY started_at DESC LIMIT 1"
+            ).fetchone()
+            last_run_task = last_run_row["task_name"] if last_run_row else None
+            last_run_time = last_run_row["finished_at"] if last_run_row else None
+
+            avg_duration_row = conn.execute("""
+                SELECT AVG(
+                    (julianday(finished_at) - julianday(started_at)) * 86400.0
+                ) as avg_seconds
+                FROM task_runs
+                WHERE finished_at IS NOT NULL AND status = 'success'
+            """).fetchone()
+            avg_duration = avg_duration_row["avg_seconds"] if avg_duration_row and avg_duration_row["avg_seconds"] else 0
+
+        return {
+            "total_runs": total_runs,
+            "success_runs": success_runs,
+            "failed_runs": failed_runs,
+            "active_tasks": active_tasks,
+            "total_tasks": total_tasks,
+            "last_run_task": last_run_task,
+            "last_run_time": last_run_time,
+            "avg_duration": avg_duration,
+        }
