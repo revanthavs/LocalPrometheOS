@@ -269,13 +269,31 @@ def render_result_card(row: Dict[str, Any], show_task_name: bool = True) -> None
         with c1:
             if sentiment:
                 emoji, label, cls = _get_sentiment_emoji(sentiment)
-                st.markdown(f"**{emoji} Sentiment**")
-                st.markdown(f'<span class="badge {cls}">{escape_html(label)}</span>', unsafe_allow_html=True)
-                st.caption(safe_sentiment)
+                sentiment_html = f"""
+<div class="result-sentiment-block">
+    <div class="result-sentiment-row">
+        <div class="result-sentiment-title">
+            <span class="result-sentiment-icon">{emoji}</span>
+            <span class="result-sentiment-label">Sentiment</span>
+        </div>
+        <span class="badge {cls}">{escape_html(label)}</span>
+    </div>
+    <div class="result-card-description">{safe_sentiment}</div>
+</div>"""
+                st.markdown(sentiment_html, unsafe_allow_html=True)
         with c2:
             if recommendation:
-                st.markdown("**&#128203; Recommendation**")
-                st.success(safe_recommendation)
+                recommendation_html = f"""
+<div class="result-recommendation-block">
+    <div class="result-sentiment-row">
+        <div class="result-sentiment-title">
+            <span class="result-sentiment-icon">📋</span>
+            <span class="result-sentiment-label">Recommendation</span>
+        </div>
+    </div>
+    <div class="result-card-description">{safe_recommendation}</div>
+</div>"""
+                st.markdown(recommendation_html, unsafe_allow_html=True)
 
     # ── Key Metrics ──────────────────────────────────────
     metrics_html = _render_key_metrics(key_metrics)

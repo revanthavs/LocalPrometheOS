@@ -1,7 +1,10 @@
 """Tasks page — manage and run all tasks."""
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 import sys
 import os
 
@@ -10,12 +13,73 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ui.shared import (
-    get_all_tasks, get_results, refresh_tasks, get_db, get_config,
-    get_project_root, escape_html,
+    clean_result_text, get_all_tasks, get_results, refresh_tasks,
+    get_db, get_config, escape_html,
 )
-from ui.components.task_cards import render_task_cards_grid
+
 from ui.components.result_cards import render_result_card
 from ui.components.system_panel import render_system_panel
+
+
+def _relative_time(iso_timestamp: Optional[str]) -> str:
+    if not iso_timestamp:
+        return "Never"
+    try:
+        dt = datetime.fromisoformat(iso_timestamp)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        delta = now - dt
+        if delta.days > 30:
+            return iso_timestamp[:10]
+        if delta.days > 0:
+            return f"{delta.days}d ago"
+        if delta.seconds >= 3600:
+            return f"{delta.seconds // 3600}h ago"
+        if delta.seconds >= 60:
+            return f"{delta.seconds // 60}m ago"
+        return "Just now"
+    except Exception:
+        return iso_timestamp[:16]
+
+
+def _extract_result_summary(result_row: Optional[dict]) -> str:
+    if not result_row:
+        return ""
+
+    summary_source = ""
+    json_payload = {}
+    if result_row.get("result_json"):
+        try:
+            json_payload = json.loads(result_row["result_json"])
+        except json.JSONDecodeError:
+            pass
+
+    for key in ("summary", "text", "result", "message", "value"):
+        candidate = json_payload.get(key)
+        if isinstance(candidate, str) and candidate.strip():
+            summary_source = candidate
+            break
+
+    if not summary_source:
+        summary_source = result_row.get("result_text", "")
+
+    if not summary_source:
+        return ""
+
+    cleaned = clean_result_text(summary_source)
+    cleaned = " ".join(cleaned.split())
+    return cleaned[:160]
+
+
+def _last_run_label(result_row: Optional[dict]) -> str:
+    if not result_row:
+        return ""
+    for key in ("finished_at", "started_at"):
+        ts = result_row.get(key)
+        if ts:
+            return _relative_time(ts)
+    return ""
 from models.lmstudio_client import LMStudioClient
 from orchestrator.agent_controller import AgentController
 from tools.builtin_tools import ToolContext, build_registry
@@ -56,42 +120,71 @@ def main():
     with col_t:
         st.markdown('<h1 class="page-title">Tasks</h1>', unsafe_allow_html=True)
         st.markdown('<p class="page-subtitle">Manage and run your monitoring tasks</p>', unsafe_allow_html=True)
-    with col_a:
-        st.markdown("<div style='text-align:right;padding-top:8px;'>", unsafe_allow_html=True)
-        if st.button("➕ Create New Task", type="primary"):
-            st.switch_page("pages/3_create_task.py")
-        st.markdown("</div>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Refresh button
-    col_r, col_f = st.columns([1, 1])
-    with col_r:
-        st.markdown(f"**{len(get_all_tasks())} tasks**")
-    with col_f:
-        if st.button("🔄 Refresh"):
-            refresh_tasks()
-            st.rerun()
+    all_tasks = get_all_tasks()
+    total_tasks = len(all_tasks)
+    enabled_tasks = sum(1 for t in all_tasks if t.enabled)
+    disabled_tasks = total_tasks - enabled_tasks
 
-    st.markdown("")
-
-    # Build results map
     results = get_results()
     results_map = {r["name"]: r for r in results}
 
-    # Filter state
+    recent_ts = None
+    for row in results:
+        for key in ("finished_at", "started_at"):
+            ts = row.get(key)
+            if ts and (recent_ts is None or ts > recent_ts):
+                recent_ts = ts
+    last_run_label = _relative_time(recent_ts) if recent_ts else "No runs yet"
+
+    stats_cols = st.columns(4)
+    stats_cols[0].metric("Total tasks", total_tasks)
+    stats_cols[1].metric("Enabled", enabled_tasks)
+    stats_cols[2].metric("Disabled", disabled_tasks)
+    stats_cols[3].metric("Last run", last_run_label)
+
     filter_key = st.session_state.get("task_filter", "all")
     filter_options = ["all", "enabled", "disabled"]
     filter_labels = {"all": "All Tasks", "enabled": "Enabled Only", "disabled": "Disabled Only"}
+    filter_index = filter_options.index(filter_key) if filter_key in filter_options else 0
 
-    col_f1, col_f2 = st.columns([1, 4])
+    search_value = st.session_state.get("task_search", "")
+
+    st.markdown('<div class="task-controls-grid">', unsafe_allow_html=True)
+    col_f1, col_f2, col_f3 = st.columns([1, 3, 1], gap="large")
     with col_f1:
-        filter_sel = st.selectbox("Filter", options=filter_options, format_func=lambda x: filter_labels[x], index=0)
+        st.markdown('<div class="task-control-col">', unsafe_allow_html=True)
+        filter_sel = st.selectbox(
+            "Filter",
+            options=filter_options,
+            format_func=lambda x: filter_labels[x],
+            index=filter_index,
+            key="task_filter_selector",
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
     with col_f2:
-        search_query = st.text_input("Search", placeholder="Search tasks by name or goal...", label_visibility="collapsed")
+        st.markdown('<div class="task-control-col">', unsafe_allow_html=True)
+        search_query = st.text_input(
+            "Search tasks",
+            value=search_value,
+            placeholder="Search tasks by name or goal...",
+            label_visibility="collapsed",
+            key="task_search_input",
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col_f3:
+        st.markdown('<div class="task-control-col task-control-actions">', unsafe_allow_html=True)
+        if st.button("🔄 Refresh tasks", key="refresh_tasks_button", use_container_width=True):
+            refresh_tasks()
+            st.rerun()
+        if st.button("🆕 Create Task", key="tasks_new_button", use_container_width=True, type="primary"):
+            st.switch_page("pages/3_create_task.py")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    all_tasks = get_all_tasks()
+    st.session_state["task_filter"] = filter_sel
+    st.session_state["task_search"] = search_query
 
-    # Apply filters
     filtered_tasks = all_tasks
     if filter_sel == "enabled":
         filtered_tasks = [t for t in filtered_tasks if t.enabled]
@@ -101,16 +194,19 @@ def main():
         q = search_query.lower()
         filtered_tasks = [t for t in filtered_tasks if q in t.name.lower() or q in t.goal.lower()]
 
-    st.markdown(f"Showing **{len(filtered_tasks)}** of **{len(all_tasks)}** tasks")
+    st.markdown(f"Showing **{len(filtered_tasks)}** of **{total_tasks}** tasks")
 
+    st.markdown('</div>', unsafe_allow_html=True)
     if filtered_tasks:
-        # Render as a grid
-        cols = st.columns(3)
-        for idx, task in enumerate(filtered_tasks):
-            col = cols[idx % 3]
-            with col:
-                result_row = results_map.get(task.name)
-                _render_task_card_inline(task, result_row)
+        cards_per_row = 2 if len(filtered_tasks) > 1 else 1
+        for row_idx in range(0, len(filtered_tasks), cards_per_row):
+            row_tasks = filtered_tasks[row_idx : row_idx + cards_per_row]
+            cols = st.columns(cards_per_row)
+            for col, task in zip(cols, row_tasks):
+                with col:
+                    result_row = results_map.get(task.name)
+                    _render_task_card_inline(task, result_row)
+            st.markdown("")
     else:
         if search_query:
             st.info(f"No tasks match '{search_query}'. Try a different search term.")
@@ -139,6 +235,8 @@ def _render_task_card_inline(task, result_row=None):
     tools_html = "".join(f'<span class="tool-chip">{escape_html(t)}</span>' for t in task.tools[:4])
     if len(task.tools) > 4:
         tools_html += f'<span class="tool-chip tool-chip-more">+{len(task.tools)-4}</span>'
+    summary_preview = _extract_result_summary(result_row)
+    last_run = _last_run_label(result_row)
 
     card_html = f"""
     <div class="task-card" id="task-{safe_key}">
@@ -148,12 +246,16 @@ def _render_task_card_inline(task, result_row=None):
         </div>
         <div class="task-card-body">
             <p class="task-card-goal">{goal_preview}</p>
+            {f'<p class="task-card-summary">{escape_html(summary_preview)}</p>' if summary_preview else ''}
             <div class="task-card-tools">
                 {tools_html}
             </div>
         </div>
         <div class="task-card-footer">
-            <span class="task-card-meta">Tools: {len(task.tools)}</span>
+            <div class="task-card-meta-row">
+                <span class="task-card-meta">Tools: {len(task.tools)}</span>
+                {f'<span class="task-card-meta-time">Last run {escape_html(last_run)}</span>' if last_run else ''}
+            </div>
         </div>
     </div>"""
 

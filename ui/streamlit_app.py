@@ -40,7 +40,7 @@ PAGES = {
         "desc": "View task execution results",
     },
     "History": {
-        "path": "pages/7_history.py",
+        "path": "pages/page_history.py",
         "icon": "🕐",
         "desc": "Full run history timeline",
     },
@@ -58,7 +58,7 @@ for name, info in PAGES.items():
     page_links.append(
         st.Page(
             str(Path(__file__).parent / info["path"]),
-            title=f"{icon}  {name}",
+            title=name,
             icon=icon,
             default=False,
         )
