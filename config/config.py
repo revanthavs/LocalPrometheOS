@@ -59,6 +59,14 @@ class MemoryConfig:
 
 
 @dataclass
+class FilesystemConfig:
+    # Directories the filesystem_read tool is allowed to access.
+    # Paths are resolved relative to the project root. An empty list
+    # means no restrictions (not recommended for production).
+    allowed_dirs: List[str] = field(default_factory=list)
+
+
+@dataclass
 class AppConfig:
     lmstudio: LMStudioConfig = field(default_factory=LMStudioConfig)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
@@ -66,6 +74,7 @@ class AppConfig:
     mcp: MCPConfig = field(default_factory=MCPConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
+    filesystem: FilesystemConfig = field(default_factory=FilesystemConfig)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AppConfig":
@@ -74,6 +83,7 @@ class AppConfig:
         storage = StorageConfig(**(data.get("storage") or {}))
         logging = LoggingConfig(**(data.get("logging") or {}))
         memory = MemoryConfig(**(data.get("memory") or {}))
+        filesystem = FilesystemConfig(**(data.get("filesystem") or {}))
 
         mcp_data = data.get("mcp") or {}
         servers_raw = mcp_data.get("servers") or []
@@ -87,6 +97,7 @@ class AppConfig:
             mcp=mcp,
             logging=logging,
             memory=memory,
+            filesystem=filesystem,
         )
 
 

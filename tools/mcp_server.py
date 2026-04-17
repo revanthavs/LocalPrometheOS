@@ -2,13 +2,25 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import feedparser
 import requests
 from ddgs import DDGS
+
+
+def _load_allowed_dirs() -> List[Path]:
+    """Read PROMETHEOS_FILESYSTEM_ALLOWED_DIRS (colon-separated paths) from env."""
+    raw = os.environ.get("PROMETHEOS_FILESYSTEM_ALLOWED_DIRS", "")
+    if not raw.strip():
+        return []
+    return [Path(p).resolve() for p in raw.split(":") if p.strip()]
+
+
+_ALLOWED_DIRS: List[Path] = _load_allowed_dirs()
 
 
 TOOL_SPECS: List[Dict[str, Any]] = [
@@ -366,14 +378,35 @@ def _handle_rss_reader(args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _handle_filesystem_read(args: Dict[str, Any]) -> Dict[str, Any]:
-    path = args.get("path")
-    if not path:
+    path_str = args.get("path")
+    if not path_str:
         raise ValueError("filesystem_read requires 'path'")
+
+    resolved = Path(path_str).resolve()
+
+    if not _ALLOWED_DIRS:
+        raise PermissionError(
+            "filesystem_read is disabled: set PROMETHEOS_FILESYSTEM_ALLOWED_DIRS "
+            "environment variable to enable it."
+        )
+    if not any(
+        resolved == allowed or resolved.is_relative_to(allowed)
+        for allowed in _ALLOWED_DIRS
+    ):
+        raise PermissionError(
+            f"Access denied: '{resolved}' is outside the permitted directories."
+        )
+
+    if not resolved.exists():
+        raise FileNotFoundError(f"File not found: '{resolved}'")
+    if not resolved.is_file():
+        raise ValueError(f"Path is not a file: '{resolved}'")
+
     max_chars = int(args.get("max_chars", 5000))
-    content = Path(path).read_text()
+    content = resolved.read_text()
     if len(content) > max_chars:
         content = content[:max_chars] + "\n...[truncated]"
-    return {"path": path, "content": content}
+    return {"path": str(resolved), "content": content}
 
 
 def _handle_tool_call(params: Dict[str, Any]) -> Dict[str, Any]:
