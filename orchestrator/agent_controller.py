@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from agents.planner_agent import PlannerAgent
 from agents.worker_agent import WorkerAgent
@@ -61,7 +61,7 @@ class AgentController:
         payload = {
             "task": task_name,
             "run_id": run_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "plan": plan,
             "tool_outputs": tool_outputs,
             "result": result,
