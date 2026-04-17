@@ -5,10 +5,13 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 import json
+import logging
 
 import feedparser
 import requests
 from ddgs import DDGS
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -69,10 +72,15 @@ class ToolRegistry:
             if name in self._mcp_specs:
                 try:
                     return self._mcp_client.call_tool(name, args)
-                except Exception:  # noqa: BLE001
-                    # Fall back to built-in tool if available.
+                except Exception as exc:
                     base_name = name.split("/")[-1]
                     if base_name in self._tools:
+                        logger.warning(
+                            "MCP tool '%s' failed (%s); falling back to built-in '%s'",
+                            name,
+                            exc,
+                            base_name,
+                        )
                         return self._tools[base_name](args, self._context)
                     raise
         # Fallback for namespaced tools that map to built-ins.

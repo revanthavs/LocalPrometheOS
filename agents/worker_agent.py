@@ -3,8 +3,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 import copy
+import logging
 
 from tools.builtin_tools import ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class WorkerAgent:
@@ -35,8 +38,9 @@ class WorkerAgent:
             error = None
             try:
                 result = self.tool_registry.call(tool, resolved_args)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 error = str(exc)
+                logger.error("Step '%s' tool '%s' failed: %s", step_id, tool, exc, exc_info=True)
             outputs.append(
                 {
                     "id": step_id,
