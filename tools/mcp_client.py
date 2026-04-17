@@ -4,12 +4,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 import json
+import logging
 import threading
 import uuid
 import time
 import os
 import subprocess
 import requests
+
+logger = logging.getLogger(__name__)
 
 from tools.builtin_tools import ToolSpec
 from config.config import MCPServerConfig
@@ -159,8 +162,12 @@ class MCPClient:
                 timeout=timeout,
             )
             self._initialized.add(server_name)
-        except MCPError:
-            pass
+        except MCPError as exc:
+            logger.warning(
+                "MCP server '%s' initialization failed: %s — tool calls may still succeed",
+                server_name,
+                exc,
+            )
 
     def list_tools(self) -> List[ToolSpec]:
         self._tool_map.clear()
