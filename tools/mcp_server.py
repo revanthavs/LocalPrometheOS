@@ -6,9 +6,14 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
+# Ensure project root is on sys.path when run as a subprocess.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import feedparser
 import requests
 from ddgs import DDGS
+
+from utils.retry import http_retry
 
 
 TOOL_SPECS: List[Dict[str, Any]] = [
@@ -177,6 +182,7 @@ def _handle_web_search(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"query": query, "results": results}
 
 
+@http_retry
 def _handle_http_fetch(args: Dict[str, Any]) -> Dict[str, Any]:
     url = args.get("url")
     if not url:
@@ -241,6 +247,7 @@ def _handle_arxiv_search(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"query": query, "items": items}
 
 
+@http_retry
 def _handle_wikipedia_search(args: Dict[str, Any]) -> Dict[str, Any]:
     query = args.get("query")
     if not query:
@@ -271,6 +278,7 @@ def _handle_wikipedia_search(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"query": query, "items": items}
 
 
+@http_retry
 def _handle_reddit_search(args: Dict[str, Any]) -> Dict[str, Any]:
     query = args.get("query")
     if not query:
@@ -297,6 +305,7 @@ def _handle_reddit_search(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"query": query, "items": items}
 
 
+@http_retry
 def _handle_github_search(args: Dict[str, Any]) -> Dict[str, Any]:
     query = args.get("query")
     if not query:
@@ -322,6 +331,7 @@ def _handle_github_search(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"query": query, "items": items}
 
 
+@http_retry
 def _handle_hn_top(args: Dict[str, Any]) -> Dict[str, Any]:
     limit = int(args.get("limit", 10))
     ids_resp = requests.get("https://hacker-news.firebaseio.com/v0/topstories.json", timeout=10)
