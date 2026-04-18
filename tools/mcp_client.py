@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 import json
+import logging
 import threading
 import uuid
 import time
@@ -13,6 +14,8 @@ import requests
 
 from tools.builtin_tools import ToolSpec
 from config.config import MCPServerConfig
+
+logger = logging.getLogger(__name__)
 
 
 class MCPError(Exception):
@@ -57,20 +60,25 @@ class StdioMCPConnection(_BaseConnection):
     def start(self) -> None:
         if self.process:
             return
-        self.process = subprocess.Popen(
-            self.command,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            env={**os.environ, **self.env},
-        )
+        try:
+            self.process = subprocess.Popen(
+                self.command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                env={**os.environ, **self.env},
+            )
+        except OSError as exc:
+            raise MCPError(f"Failed to start MCP process {self.command!r}: {exc}") from exc
         self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
         self._reader_thread.start()
 
     def _reader_loop(self) -> None:
-        assert self.process and self.process.stdout
+        if not self.process or not self.process.stdout:
+            logger.error("MCP reader loop started before process was ready; aborting reader")
+            return
         for line in self.process.stdout:
             line = line.strip()
             if not line:
