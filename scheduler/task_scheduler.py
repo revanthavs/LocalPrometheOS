@@ -1,11 +1,14 @@
 """Task scheduler using APScheduler."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+import logging
 import time
 from pathlib import Path
 from typing import List
 from zoneinfo import ZoneInfo
+
+logger = logging.getLogger(__name__)
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -36,7 +39,8 @@ class TaskScheduler:
     def _resolve_timezone(self, tz_name: str) -> ZoneInfo:
         try:
             return ZoneInfo(tz_name)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:
+            logger.warning("Invalid timezone '%s' (%s); falling back to UTC", tz_name, exc)
             return ZoneInfo("UTC")
 
     def load_and_schedule(self) -> List[TaskDefinition]:
@@ -58,7 +62,7 @@ class TaskScheduler:
         return tasks
 
     def _run_task(self, task: TaskDefinition) -> None:
-        self.controller.run_task(task, scheduled_for=datetime.utcnow())
+        self.controller.run_task(task, scheduled_for=datetime.now(timezone.utc))
 
     def start(self) -> None:
         self.scheduler.start()
