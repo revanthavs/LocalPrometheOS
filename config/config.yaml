@@ -34,3 +34,10 @@ memory:
   chroma_enabled: false
   persist_dir: "data/chroma"
   collection: "prometheos"
+
+filesystem:
+  # Directories the filesystem_read tool may access (relative to project root).
+  # Add paths here to enable file reading. Empty = no access allowed.
+  allowed_dirs:
+    - "data"
+    - "tasks"
