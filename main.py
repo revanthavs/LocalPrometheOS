@@ -34,7 +34,12 @@ def _build_controller(config_path: Optional[str] = None) -> AgentController:
         max_tokens=config.lmstudio.max_tokens,
         timeout=config.lmstudio.timeout,
     )
-    tool_registry = build_registry(ToolContext(lm_client=lm_client))
+    project_root = Path(__file__).resolve().parent
+    allowed_dirs = [
+        (project_root / d).resolve()
+        for d in config.filesystem.allowed_dirs
+    ]
+    tool_registry = build_registry(ToolContext(lm_client=lm_client, filesystem_allowed_dirs=allowed_dirs))
     if config.mcp.servers:
         mcp_client = MCPClient(config.mcp.servers)
         tool_registry.set_mcp_client(mcp_client)

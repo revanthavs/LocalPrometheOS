@@ -1,7 +1,7 @@
 """Task scheduler using APScheduler."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import time
 from pathlib import Path
@@ -62,7 +62,7 @@ class TaskScheduler:
         return tasks
 
     def _run_task(self, task: TaskDefinition) -> None:
-        self.controller.run_task(task, scheduled_for=datetime.utcnow())
+        self.controller.run_task(task, scheduled_for=datetime.now(timezone.utc))
 
     def start(self) -> None:
         self.scheduler.start()

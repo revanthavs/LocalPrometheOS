@@ -24,6 +24,13 @@ class ToolSpec:
 @dataclass
 class ToolContext:
     lm_client: Optional[Any] = None
+    # Resolved absolute paths that filesystem_read is permitted to access.
+    # Empty list = no access allowed (safe default).
+    filesystem_allowed_dirs: List[Path] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        if self.filesystem_allowed_dirs is None:
+            self.filesystem_allowed_dirs = []
 
 
 ToolHandler = Callable[[Dict[str, Any], ToolContext], Dict[str, Any]]
@@ -182,15 +189,37 @@ def _web_search(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
     return {"query": query, "results": results}
 
 
-def _filesystem_read(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
-    path = args.get("path")
-    if not path:
+def _filesystem_read(args: Dict[str, Any], context: ToolContext) -> Dict[str, Any]:
+    path_str = args.get("path")
+    if not path_str:
         raise ValueError("filesystem_read requires 'path'")
+
+    resolved = Path(path_str).resolve()
+
+    allowed_dirs = context.filesystem_allowed_dirs
+    if not allowed_dirs:
+        raise PermissionError(
+            "filesystem_read is disabled: no allowed_dirs configured. "
+            "Add filesystem.allowed_dirs to config.yaml."
+        )
+    if not any(
+        resolved == allowed or resolved.is_relative_to(allowed)
+        for allowed in allowed_dirs
+    ):
+        raise PermissionError(
+            f"Access denied: '{resolved}' is outside the permitted directories."
+        )
+
+    if not resolved.exists():
+        raise FileNotFoundError(f"File not found: '{resolved}'")
+    if not resolved.is_file():
+        raise ValueError(f"Path is not a file: '{resolved}'")
+
     max_chars = int(args.get("max_chars", 5000))
-    content = Path(path).read_text()
+    content = resolved.read_text()
     if len(content) > max_chars:
         content = content[:max_chars] + "\n...[truncated]"
-    return {"path": path, "content": content}
+    return {"path": str(resolved), "content": content}
 
 
 def _market_sentiment(args: Dict[str, Any], context: ToolContext) -> Dict[str, Any]:
