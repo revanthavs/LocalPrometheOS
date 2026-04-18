@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 
 from tasks.task_definition import TaskDefinition
 
@@ -76,7 +76,7 @@ class Database:
             )
 
     def upsert_task(self, task: TaskDefinition) -> None:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self.connect() as conn:
             conn.execute(
                 """
@@ -102,7 +102,7 @@ class Database:
             )
 
     def start_run(self, task_name: str, scheduled_for: Optional[str]) -> int:
-        started_at = datetime.utcnow().isoformat()
+        started_at = datetime.now(timezone.utc).isoformat()
         with self.connect() as conn:
             cursor = conn.execute(
                 """
@@ -114,7 +114,7 @@ class Database:
             return int(cursor.lastrowid)
 
     def finish_run(self, run_id: int, status: str, error: Optional[str] = None) -> None:
-        finished_at = datetime.utcnow().isoformat()
+        finished_at = datetime.now(timezone.utc).isoformat()
         with self.connect() as conn:
             conn.execute(
                 """
@@ -154,7 +154,7 @@ class Database:
             )
 
     def log(self, run_id: Optional[int], level: str, message: str) -> None:
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         with self.connect() as conn:
             conn.execute(
                 """
