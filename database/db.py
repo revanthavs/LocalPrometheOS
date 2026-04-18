@@ -182,16 +182,27 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_recent_logs(self, limit: int = 200) -> List[Dict[str, Any]]:
+    def get_recent_logs(self, limit: int = 200, level: Optional[str] = None) -> List[Dict[str, Any]]:
         with self.connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT * FROM logs
-                ORDER BY timestamp DESC
-                LIMIT ?
-                """,
-                (limit,),
-            ).fetchall()
+            if level and level.upper() != "ALL":
+                rows = conn.execute(
+                    """
+                    SELECT * FROM logs
+                    WHERE UPPER(level) = ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                    """,
+                    (level.upper(), limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM logs
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                    """,
+                    (limit,),
+                ).fetchall()
         return [dict(row) for row in rows]
 
     def get_run_history(

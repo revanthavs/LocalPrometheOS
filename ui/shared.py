@@ -54,8 +54,8 @@ def get_results() -> List[dict]:
     return get_db().get_last_results()
 
 
-def get_logs(limit: int = 200) -> List[dict]:
-    return get_db().get_recent_logs(limit)
+def get_logs(limit: int = 200, level: Optional[str] = None) -> List[dict]:
+    return get_db().get_recent_logs(limit, level=level)
 
 
 def get_run_history(

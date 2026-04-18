@@ -60,10 +60,7 @@ def main():
     with col_limit:
         limit = st.selectbox("Show last", [50, 100, 200, 500], index=1)
 
-    logs = get_logs(limit=limit)
-
-    if level_filter != "All":
-        logs = [l for l in logs if l.get("level", "").upper() == level_filter.upper()]
+    logs = get_logs(limit=limit, level=level_filter if level_filter != "All" else None)
 
     if not logs:
         st.info("No logs found.")
