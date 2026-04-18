@@ -11,6 +11,8 @@ import feedparser
 import requests
 from ddgs import DDGS
 
+from utils.retry import http_retry
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,6 +93,7 @@ class ToolRegistry:
         raise KeyError(f"Unknown tool: {name}")
 
 
+@http_retry
 def _crypto_price(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
     coin_id = args.get("coin_id", "bitcoin")
     vs_currency = args.get("vs_currency", "usd")
@@ -152,6 +155,7 @@ def _rss_reader(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
     return {"url": url, "items": items}
 
 
+@http_retry
 def _http_fetch(args: Dict[str, Any], _context: ToolContext) -> Dict[str, Any]:
     url = args.get("url")
     if not url:
