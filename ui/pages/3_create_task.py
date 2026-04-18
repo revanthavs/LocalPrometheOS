@@ -11,7 +11,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ui.shared import get_project_root, get_config, get_db
-from tasks.task_definition import TaskDefinition, save_task
+from tasks.task_definition import TaskDefinition, TaskValidationError, save_task, validate_task
 from ui.components.system_panel import render_system_panel
 
 
@@ -314,6 +314,7 @@ def _render_step_schedule() -> bool:
         interval = st.selectbox("Run every", [1, 2, 3, 4, 6, 12], index=0, key="wiz_interval")
         data["schedule_interval"] = interval
 
+    cron_error = None
     if mode == "custom":
         custom = st.text_input(
             "Cron expression",
@@ -321,6 +322,10 @@ def _render_step_schedule() -> bool:
             help="Standard 5-field cron: minute hour day-of-month month day-of-week",
         )
         data["schedule_custom"] = custom
+        try:
+            validate_task({"name": "x", "schedule": custom, "goal": "x", "tools": ["web_search"]})
+        except TaskValidationError as exc:
+            cron_error = str(exc)
 
     # Preview
     cron = _build_cron(
@@ -333,8 +338,10 @@ def _render_step_schedule() -> bool:
     )
     human = _cron_to_human(cron)
     st.code(f"Cron: {cron}\n{human}", language=None)
+    if cron_error:
+        st.error(cron_error)
 
-    return True
+    return cron_error is None
 
 
 def _render_step_tools() -> bool:
@@ -430,17 +437,6 @@ def _render_step_review() -> tuple[bool, str]:
 
     data = st.session_state.wizard_data
 
-    # Validation
-    errors = []
-    if not data.get("name", "").strip():
-        errors.append("Task name is required.")
-    if not data.get("goal", "").strip():
-        errors.append("Goal is required.")
-    if len(data.get("goal", "")) < 10:
-        errors.append("Goal should be at least 10 characters.")
-    if not data.get("tools"):
-        errors.append("At least one tool must be selected.")
-
     cron = _build_cron(
         data.get("schedule_mode", "daily"),
         data.get("schedule_hour", 9),
@@ -451,9 +447,16 @@ def _render_step_review() -> tuple[bool, str]:
     )
     human = _cron_to_human(cron)
 
-    if errors:
-        for e in errors:
-            st.error(e)
+    task_data = {
+        "name": data.get("name", "").strip(),
+        "schedule": cron,
+        "goal": data.get("goal", "").strip(),
+        "tools": data.get("tools", []),
+    }
+    try:
+        validate_task(task_data)
+    except TaskValidationError as exc:
+        st.error(str(exc))
         return False, cron
 
     # Summary
@@ -484,7 +487,7 @@ def _render_step_review() -> tuple[bool, str]:
 
 
 def _save_task() -> bool:
-    """Save the task to disk and database."""
+    """Validate then save the task to disk and database. Returns False on error."""
     data = st.session_state.wizard_data
     cron = _build_cron(
         data.get("schedule_mode", "daily"),
@@ -497,11 +500,20 @@ def _save_task() -> bool:
     all_inputs = dict(data.get("inputs", {}))
     all_inputs.update(data.get("extra_inputs", {}))
 
+    task_data = {
+        "name": data.get("name", "").strip(),
+        "schedule": cron,
+        "goal": data.get("goal", "").strip(),
+        "tools": data.get("tools", []),
+    }
+    try:
+        validate_task(task_data)
+    except TaskValidationError as exc:
+        st.error(f"Validation error: {exc}")
+        return False
+
     task = TaskDefinition(
-        name=data.get("name", "").strip(),
-        schedule=cron,
-        goal=data.get("goal", "").strip(),
-        tools=data.get("tools", []),
+        **task_data,
         inputs=all_inputs,
         enabled=data.get("enabled", True),
     )

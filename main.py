@@ -15,7 +15,7 @@ from tools.mcp_client import MCPClient
 from database.db import Database
 from orchestrator.agent_controller import AgentController
 from scheduler.task_scheduler import TaskScheduler
-from tasks.task_definition import TaskDefinition, load_tasks, save_task
+from tasks.task_definition import TaskDefinition, TaskValidationError, load_tasks, save_task, validate_task
 
 app = typer.Typer(help="LocalPrometheOS — Autonomous AI monitoring powered by local models.")
 
@@ -79,14 +79,19 @@ def add_task(
     """Add a new task definition."""
     tool_list = [t.strip() for t in tools.split(",") if t.strip()]
     inputs_dict = json.loads(inputs) if inputs else {}
-    task = TaskDefinition(
-        name=name,
-        schedule=schedule,
-        goal=goal,
-        tools=tool_list,
-        inputs=inputs_dict,
-        enabled=True,
-    )
+    task_data = {
+        "name": name,
+        "schedule": schedule,
+        "goal": goal,
+        "tools": tool_list,
+        "inputs": inputs_dict,
+    }
+    try:
+        validate_task(task_data)
+    except TaskValidationError as exc:
+        typer.echo(f"Validation error: {exc}", err=True)
+        raise typer.Exit(code=1)
+    task = TaskDefinition(**task_data, enabled=True)
     path = save_task(task, _tasks_dir())
     typer.echo(f"Task saved to {path}")
 

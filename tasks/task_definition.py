@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import yaml
 
 
@@ -22,13 +22,49 @@ class TaskValidationError(ValueError):
     pass
 
 
+def _validate_cron(schedule: str) -> None:
+    from apscheduler.triggers.cron import CronTrigger
+    try:
+        CronTrigger.from_crontab(schedule)
+    except Exception as exc:
+        raise TaskValidationError(f"Invalid cron schedule '{schedule}': {exc}") from exc
+
+
+def validate_task(
+    data: Dict[str, Any],
+    known_tools: Optional[List[str]] = None,
+) -> None:
+    """Validate task data dict, raising TaskValidationError on any problem.
+
+    Parameters
+    ----------
+    data:
+        Raw task dict (as loaded from YAML or built in UI).
+    known_tools:
+        If provided, every tool name in the task must appear in this list.
+        Required inputs for known tools are also checked.
+    """
+    required_fields = ["name", "schedule", "goal", "tools"]
+    for field in required_fields:
+        if field not in data or not data[field]:
+            raise TaskValidationError(f"Task missing required field: '{field}'")
+
+    if not isinstance(data["tools"], list) or len(data["tools"]) == 0:
+        raise TaskValidationError("Task 'tools' must be a non-empty list")
+
+    _validate_cron(data["schedule"])
+
+    if known_tools is not None:
+        unknown = [t for t in data["tools"] if t not in known_tools]
+        if unknown:
+            raise TaskValidationError(
+                f"Unknown tool(s): {', '.join(unknown)}. "
+                f"Available: {', '.join(known_tools)}"
+            )
+
+
 def _validate_task(data: Dict[str, Any]) -> None:
-    required = ["name", "schedule", "goal", "tools"]
-    for field in required:
-        if field not in data:
-            raise TaskValidationError(f"Task missing required field: {field}")
-    if not isinstance(data["tools"], list):
-        raise TaskValidationError("Task 'tools' must be a list")
+    validate_task(data)
 
 
 def load_task_file(path: Path) -> TaskDefinition:
