@@ -1,14 +1,54 @@
-"""System status panel component — LM Studio, scheduler, and task status."""
+"""System status panel component — LM Studio, MCP, scheduler, and task status."""
 from __future__ import annotations
 
 import time
-from typing import Dict, Any
+from typing import Any, Dict, List
 import urllib.request
 import urllib.error
 
 import streamlit as st
 
 from ui.shared import get_config, get_all_tasks, get_db
+
+
+@st.cache_data(ttl=60)
+def check_mcp_servers(server_configs_repr: str) -> List[Dict[str, Any]]:
+    """Probe each configured MCP server and return status + tool count.
+
+    server_configs_repr is a stable string key derived from the server list
+    so st.cache_data can hash it.
+    """
+    import json as _json
+    from config.config import MCPServerConfig
+    from tools.mcp_client import MCPClient, MCPError
+
+    try:
+        servers_raw = _json.loads(server_configs_repr)
+        servers = [MCPServerConfig(**s) for s in servers_raw]
+    except Exception:
+        return []
+
+    results: List[Dict[str, Any]] = []
+    for server in servers:
+        try:
+            client = MCPClient([server])
+            tools = client.list_tools()
+            results.append({
+                "name": server.name,
+                "transport": server.transport,
+                "connected": True,
+                "tool_count": len(tools),
+                "error": None,
+            })
+        except Exception as exc:
+            results.append({
+                "name": server.name,
+                "transport": server.transport,
+                "connected": False,
+                "tool_count": 0,
+                "error": str(exc)[:80],
+            })
+    return results
 
 
 @st.cache_data(ttl=60)
@@ -115,6 +155,41 @@ def render_system_panel() -> None:
 """, unsafe_allow_html=True)
 
     st.markdown('<div class="sp-divider"></div>', unsafe_allow_html=True)
+
+    # MCP Servers Section
+    if config.mcp.servers:
+        import json as _json
+        servers_repr = _json.dumps(
+            [
+                {
+                    "name": s.name,
+                    "transport": s.transport,
+                    "command": s.command,
+                    "url": s.url,
+                    "env": s.env,
+                    "timeout": s.timeout,
+                }
+                for s in config.mcp.servers
+            ]
+        )
+        mcp_statuses = check_mcp_servers(servers_repr)
+
+        st.markdown('<div class="sp-header">MCP Servers</div>', unsafe_allow_html=True)
+        rows_html = ""
+        for srv in mcp_statuses:
+            dot_bg = "var(--success)" if srv["connected"] else "var(--error)"
+            status_text = f"{srv['tool_count']} tools" if srv["connected"] else "Unreachable"
+            status_color = "success" if srv["connected"] else "error"
+            transport_badge = srv["transport"].upper()
+            rows_html += f"""
+<div class="sp-row">
+    <div class="sp-dot" style="background:{dot_bg};"></div>
+    <span class="sp-label">{srv['name']} <span style="color:#555a70;font-size:10px;">[{transport_badge}]</span></span>
+    <span class="sp-value {status_color}">{status_text}</span>
+</div>"""
+
+        st.markdown(f'<div class="sp-section">{rows_html}</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sp-divider"></div>', unsafe_allow_html=True)
 
     # Scheduler Section
     st.markdown('<div class="sp-header">Scheduler</div>', unsafe_allow_html=True)
